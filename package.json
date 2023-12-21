@@ -1,0 +1,12 @@
+{
+  "name": "gcp-crypto",
+  "description": "A Node.js module for symmetric text encryption and decryption using Google Cloud KMS and Secret Manager",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "repository": "https://github.com/amitdeshmukh/gcp-crypto",
+  "dependencies": {
+    "@google-cloud/kms": "^4.0.1",
+    "@google-cloud/secret-manager": "^5.0.1"
+  }
+}
