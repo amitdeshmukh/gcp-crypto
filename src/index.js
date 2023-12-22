@@ -161,4 +161,8 @@ class GCPCrypto {
   }
 }
 
+// ES6 default export
 export default GCPCrypto;
+
+// CommonJS export for `require`
+module.exports = GCPCrypto;
