@@ -1,12 +1,6 @@
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import { KeyManagementServiceClient } from '@google-cloud/kms';
 
-// Instantiates a Secret Manager client
-const secretmanagerClient = new SecretManagerServiceClient();
-
-// Instantiates a KMS client
-const kmsClient = new KeyManagementServiceClient();
-
 class GCPCrypto {
   constructor(projectId, locationId, keyRing) {
     this.projectId = projectId;
@@ -26,8 +20,8 @@ class GCPCrypto {
    */
   async createCryptoKey(keyId, protectionLevel) {
     try {
-      const [cryptoKey] = await kmsClient.createCryptoKey({
-        parent: kmsClient.keyRingPath(projectId, locationId, keyRing),
+      const [cryptoKey] = await this.kmsClient.createCryptoKey({
+        parent: this.kmsClient.keyRingPath(this.projectId, this.locationId, this.keyRing),
         cryptoKeyId: keyId,
         cryptoKey: {
           purpose: 'ENCRYPT_DECRYPT',
@@ -41,7 +35,7 @@ class GCPCrypto {
       return cryptoKey;
     } catch (error) {
       if (error.code === 6) {
-        throw new Error(`KMS CryptoKey ${keyId} already exists in keyring ${keyRing}`);
+        throw new Error(`KMS CryptoKey ${keyId} already exists in keyring ${this.keyRing}`);
       } else {
         throw error;
       }
@@ -60,29 +54,29 @@ class GCPCrypto {
    * */
   async encryptAndStoreSecretKey(keyId, aesKey, overwrite = false) {
     // Build the key name
-    const keyName = kmsClient.cryptoKeyPath(
-      projectId,
-      locationId,
-      keyRing,
+    const keyName = this.kmsClient.cryptoKeyPath(
+      this.projectId,
+      this.locationId,
+      this.keyRing,
       keyId
     );
 
     // Check if the secret already exists
     const secretId = `${keyId}-aes-key`;
-    const [secrets] = await secretmanagerClient.listSecrets({
-      parent: `projects/${projectId}`,
+    const [secrets] = await this.secretmanagerClient.listSecrets({
+      parent: `projects/${this.projectId}`,
     });
     const secretExists = secrets.some(secret => secret.name.includes(secretId));
 
     // If the secret exists and overwrite flag is set, delete the secret
     if (secretExists && overwrite) {
-      await secretmanagerClient.deleteSecret({
-        name: `projects/${projectId}/secrets/${secretId}`,
+      await this.secretmanagerClient.deleteSecret({
+        name: `projects/${this.projectId}/secrets/${secretId}`,
       });
     }  
 
     // Encrypt the key using Cloud KMS
-    const [encryptResponse] = await kmsClient.encrypt({
+    const [encryptResponse] = await this.kmsClient.encrypt({
       name: keyName,
       plaintext: Buffer.from(aesKey).toString('base64'),
     });
@@ -90,8 +84,8 @@ class GCPCrypto {
 
     // Store the encrypted key in Google Secret Manager
     try {
-      const [secret] = await secretmanagerClient.createSecret({
-        parent: `projects/${projectId}`,
+      const [secret] = await this.secretmanagerClient.createSecret({
+        parent: `projects/${this.projectId}`,
         secretId: `${keyId}-aes-key`,
         secret: {
           replication: {
@@ -103,7 +97,7 @@ class GCPCrypto {
         },
       });
 
-      const [version] = await secretmanagerClient.addSecretVersion({
+      const [version] = await this.secretmanagerClient.addSecretVersion({
         parent: secret.name,
         payload: {
           data: Buffer.from(encryptedKey, 'base64'),
@@ -131,25 +125,25 @@ class GCPCrypto {
   async decryptSecretKey(keyId) {
     try {
       // Build the key name
-      const keyName = kmsClient.cryptoKeyPath(
-        projectId,
-        locationId,
-        keyRing,
+      const keyName = this.kmsClient.cryptoKeyPath(
+        this.projectId,
+        this.locationId,
+        this.keyRing,
         keyId
       );
 
       // Build the secret name
       const secretId = `${keyId}-aes-key`;
-      const secretName = `projects/${projectId}/secrets/${secretId}/versions/latest`;
+      const secretName = `projects/${this.projectId}/secrets/${secretId}/versions/latest`;
 
       // Retrieve the encrypted key from Google Secret Manager
-      const [version] = await secretmanagerClient.accessSecretVersion({
+      const [version] = await this.secretmanagerClient.accessSecretVersion({
         name: secretName,
       });
       const encryptedKey = version.payload.data;
 
       // Decrypt the key using Cloud KMS
-      const [decryptResponse] = await kmsClient.decrypt({
+      const [decryptResponse] = await this.kmsClient.decrypt({
         name: keyName,
         ciphertext: encryptedKey,
       });
