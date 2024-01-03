@@ -150,7 +150,7 @@ class GCPCrypto {
 
       return decryptResponse.plaintext.toString('utf8');    
     } catch (error) {
-      throw new Error('Failed to obtain the key:', error);
+      throw error;
     }
   }
 }
