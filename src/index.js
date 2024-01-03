@@ -53,6 +53,8 @@ class GCPCrypto {
    * @returns {Promise<string>} The encrypted key
    * */
   async encryptAndStoreSecretKey(keyId, aesKey, overwrite = false) {
+    let encryptedKey;
+
     // Build the key name
     const keyName = this.kmsClient.cryptoKeyPath(
       this.projectId,
@@ -61,29 +63,29 @@ class GCPCrypto {
       keyId
     );
 
-    // Check if the secret already exists
-    const secretId = `${keyId}-aes-key`;
-    const [secrets] = await this.secretmanagerClient.listSecrets({
-      parent: `projects/${this.projectId}`,
-    });
-    const secretExists = secrets.some(secret => secret.name.includes(secretId));
-
-    // If the secret exists and overwrite flag is set, delete the secret
-    if (secretExists && overwrite) {
-      await this.secretmanagerClient.deleteSecret({
-        name: `projects/${this.projectId}/secrets/${secretId}`,
-      });
-    }  
-
-    // Encrypt the key using Cloud KMS
-    const [encryptResponse] = await this.kmsClient.encrypt({
-      name: keyName,
-      plaintext: Buffer.from(aesKey).toString('base64'),
-    });
-    const encryptedKey = encryptResponse.ciphertext;
-
-    // Store the encrypted key in Google Secret Manager
     try {
+      // Check if the secret already exists
+      const secretId = `${keyId}-aes-key`;
+      const [secrets] = await this.secretmanagerClient.listSecrets({
+        parent: `projects/${this.projectId}`,
+      });
+      const secretExists = secrets.some(secret => secret.name.includes(secretId));
+
+      // If the secret exists and overwrite flag is set, delete the secret
+      if (secretExists && overwrite) {
+        await this.secretmanagerClient.deleteSecret({
+          name: `projects/${this.projectId}/secrets/${secretId}`,
+        });
+      }  
+
+      // Encrypt the key using Cloud KMS
+      const [encryptResponse] = await this.kmsClient.encrypt({
+        name: keyName,
+        plaintext: Buffer.from(aesKey).toString('base64'),
+      });
+      encryptedKey = encryptResponse.ciphertext;
+
+      // Store the encrypted key in Google Secret Manager
       const [secret] = await this.secretmanagerClient.createSecret({
         parent: `projects/${this.projectId}`,
         secretId: `${keyId}-aes-key`,
@@ -97,20 +99,22 @@ class GCPCrypto {
         },
       });
 
-      const [version] = await this.secretmanagerClient.addSecretVersion({
+      await this.secretmanagerClient.addSecretVersion({
         parent: secret.name,
         payload: {
           data: Buffer.from(encryptedKey, 'base64'),
         },
       });
-      console.log('Added secret version:', version.name);
-    } catch (error) {
-      if (error.code === 6) {
-        throw new Error('Secret already exists');
-      } else {
-        throw error;
-      }
-    }
+
+  } catch (error) {
+    if (error.code === 6 && error.message.includes('already exists')) {
+      throw new Error(`Secret ${keyId} already exists and overwrite is not set`);
+    } else {
+      // Log the error or include additional context in the error message
+      console.error(`Error in encryptAndStoreSecretKey: ${error.message}`);
+      throw new Error(`Error during encryption or storage of secret key: ${error.message}`);
+    }    
+  }
 
     return encryptedKey;
   }
