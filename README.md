@@ -37,21 +37,31 @@ import GCPCrypto from 'gcp-crypto';
 // Initialize the module with your project ID, GCP keyring location ID, and keyring name
 const gcpCrypto = new GCPCrypto('your-project-id', 'your-location-id', 'your-key-ring');
 
-
-// Create a CryptoKey in your KeyRing
-await gcpCrypto.createCryptoKey(keyId, protectionLevel);
+// Create a CryptoKey in your KeyRing with protectionLevel
+await gcpCrypto.createCryptoKey(keyId, 'SOFTWARE');
 
 // Generate a random AES-256-GCM symmetric encryption/decryption key
 import Cryptr from 'cryptr';
-const cryptr = new Cryptr(process.env.SECRET);
+let cryptr = new Cryptr('myTotalySecretKey');
 const aesKey = cryptr.encrypt(Math.random().toString(36).substring(2, 15));
 
 // Encrypt the AES key with GCP KMS and store it in Secret Manager
 const encryptedKey = await gcpCrypto.encryptAndStoreSecretKey(keyId, aesKey, true);
 console.log('Encrypted key:', encryptedKey.toString('base64'));
 
+// Use the key to encrypt something
+const plainText = 'Hello World!';
+cryptr = new Cryptr(aesKey);
+const encryptedText = cryptr.encrypt(plainText);
+console.log('Encrypted text:', encryptedText);
+
 // Retrieve the key from Secret Manager and decrypt it using GCP KMS
 const decryptedKey = await gcpCrypto.decryptSecretKey(keyId);
-console.log('Decrypted key:', decryptedKey);
+console.log('Decrypted AESkey:', decryptedKey);
+
+// Use the key to decrypt encrypted text
+cryptr = new Cryptr(decryptedKey);
+const decryptedText = cryptr.decrypt(encryptedText);
+console.log('Decrypted text:', decryptedText);
 
 ```
