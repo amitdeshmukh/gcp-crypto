@@ -65,7 +65,7 @@ class GCPCrypto {
 
     try {
       // Check if the secret already exists
-      const secretId = `${keyId}-aes-key`;
+      const secretId = `${keyId}`;
       const [secrets] = await this.secretmanagerClient.listSecrets({
         parent: `projects/${this.projectId}`,
       });
@@ -88,7 +88,7 @@ class GCPCrypto {
       // Store the encrypted key in Google Secret Manager
       const [secret] = await this.secretmanagerClient.createSecret({
         parent: `projects/${this.projectId}`,
-        secretId: `${keyId}-aes-key`,
+        secretId: `${keyId}`,
         secret: {
           replication: {
             automatic: {},
@@ -137,7 +137,7 @@ class GCPCrypto {
       );
 
       // Build the secret name
-      const secretId = `${keyId}-aes-key`;
+      const secretId = `${keyId}`;
       const secretName = `projects/${this.projectId}/secrets/${secretId}/versions/latest`;
 
       // Retrieve the encrypted key from Google Secret Manager
@@ -157,6 +157,37 @@ class GCPCrypto {
       throw error;
     }
   }
+
+  /**
+   * Retrieve and decrypt all keys from Google Secret Manager that are part of the current key ring
+   * @throws {Error} If the decrypt operation fails
+   * @returns {Promise<Object[]>} An array of objects containing the keyId and decrypted key
+   */
+  async decryptAllKeys() {
+    try {
+      // Retrieve all secrets from Google Secret Manager
+      const [secrets] = await this.secretmanagerClient.listSecrets({
+        parent: `projects/${this.projectId}`,
+      });
+
+      // Filter out secrets that are not part of the current key ring
+      const keyRingSecrets = secrets.filter(secret => 
+        secret.name.includes(`/${this.keyRing}/`)
+      );
+
+      // Decrypt each secret and collect the results
+      const decryptedKeys = await Promise.all(keyRingSecrets.map(async (secret) => {
+        const secretId = secret.name.split('/').pop();
+        const decryptedKey = await this.decryptSecretKey(secretId);
+        return { keyId: secretId, decryptedKey };
+      }));
+
+      return decryptedKeys;
+    } catch (error) {
+      console.error(`Error in decryptAllKeys: ${error.message}`);
+      throw new Error(`Error during decryption of all keys: ${error.message}`);
+    }
+  }  
 }
 
 // ES6 default export
