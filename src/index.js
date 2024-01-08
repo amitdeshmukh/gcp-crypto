@@ -167,27 +167,36 @@ class GCPCrypto {
     try {
       // Retrieve all secrets from Google Secret Manager
       const [secrets] = await this.secretmanagerClient.listSecrets({
-        parent: `projects/${this.projectId}`,
+        parent: `projects/${this.projectId}`
       });
 
-      // Filter out secrets that are not part of the current key ring
-      const keyRingSecrets = secrets.filter(secret => 
-        secret.name.includes(`/${this.keyRing}/`)
-      );
-
       // Decrypt each secret and collect the results
-      const decryptedKeys = await Promise.all(keyRingSecrets.map(async (secret) => {
+      const decryptedKeysPromises = secrets.map(async secret => {
         const secretId = secret.name.split('/').pop();
-        const decryptedKey = await this.decryptSecretKey(secretId);
-        return { keyId: secretId, decryptedKey };
-      }));
+        try {
+          const decryptedKey = await this.decryptSecretKey(secretId);
+          return {
+            keyId: secretId,
+            decryptedKey
+          };
+        } catch (error) {
+          // Handle the error for the individual key
+          console.error(`Error decrypting key ${secretId}: ${error.message}`);
+          // Return null or some error indicator if needed
+          return null;
+        }
+      });
 
+      // Filter out any null results from errors
+      const decryptedKeys = (await Promise.all(decryptedKeysPromises)).filter(key => key !== null);
+      
       return decryptedKeys;
     } catch (error) {
+      // Handle the error for the entire operation
       console.error(`Error in decryptAllKeys: ${error.message}`);
       throw new Error(`Error during decryption of all keys: ${error.message}`);
     }
-  }  
+  }
 }
 
 // ES6 default export

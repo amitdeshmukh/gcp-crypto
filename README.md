@@ -65,3 +65,11 @@ const decryptedText = cryptr.decrypt(encryptedText);
 console.log('Decrypted text:', decryptedText);
 
 ```
+
+You can decrypt all keys in the Secret Manager at once. Here's an example of using the `decryptAllKeys` method:
+```js
+// Assuming gcpCrypto is already initialized as shown previously
+// Decrypt all keys in the key ring
+let result = await gcpCrypto.decryptAllKeys();
+console.log('All keys:', result);
+```
