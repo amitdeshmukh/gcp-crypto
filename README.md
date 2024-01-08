@@ -13,6 +13,8 @@ The class provides the following methods:
 
 - `decryptSecretKey(keyId)`: This method retrieves the encrypted key from Google Secret Manager and decrypts it using Cloud KMS. The `keyId` is a required parameter.
 
+- `decryptAllKeys()`: This method retrieves all secrets from Google Secret Manager and decrypts them using Cloud KMS. It returns an object with the decrypted keys.
+
 ## Authentication
 
 The module uses Application Default Credentials (ADC) to authenticate with Google Cloud services. ADC is a strategy that allows the module to find and use appropriate credentials based on its environment. This could be credentials set in an environment variable, credentials provided by the Google Cloud SDK, credentials provided by the Google Cloud Metadata server, etc.
