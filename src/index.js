@@ -197,6 +197,68 @@ class GCPCrypto {
       throw new Error(`Error during decryption of all keys: ${error.message}`);
     }
   }
+
+  /**
+   * Encrypts the provided plaintext using Google Cloud KMS and returns the ciphertext.
+   * @param {string} keyId - The ID of the key used for encryption.
+   * @param {string} plaintext - The plaintext to be encrypted.
+   * @throws {Error} If the encryption operation fails.
+   * @returns {Promise<string>} The encrypted ciphertext.
+   */
+  async encryptPlaintext(keyId, plaintext) {
+    try {
+      // Build the key name
+      const keyName = this.kmsClient.cryptoKeyPath(
+        this.projectId,
+        this.locationId,
+        this.keyRing,
+        keyId
+      );
+
+      // Encrypt the plaintext using Cloud KMS
+      const [encryptResponse] = await this.kmsClient.encrypt({
+        name: keyName,
+        plaintext: Buffer.from(plaintext).toString('base64'),
+      });
+
+      // Return the encrypted ciphertext
+      return encryptResponse.ciphertext;
+    } catch (error) {
+      console.error(`Error in encryptPlaintext for keyId ${keyId}: ${error.message}`);
+      throw new Error(`Error during encryption of plaintext: ${error.message}`);
+    }
+  }
+
+  /**
+   * Decrypts the provided ciphertext using Google Cloud KMS and returns the plaintext.
+   * @param {string} keyId - The ID of the key used for decryption.
+   * @param {string} ciphertext - The ciphertext to be decrypted.
+   * @throws {Error} If the decryption operation fails.
+   * @returns {Promise<string>} The decrypted plaintext.
+   */
+  async decryptCiphertext(keyId, ciphertext) {
+    try {
+      // Build the key name
+      const keyName = this.kmsClient.cryptoKeyPath(
+        this.projectId,
+        this.locationId,
+        this.keyRing,
+        keyId
+      );
+
+      // Decrypt the ciphertext using Cloud KMS
+      const [decryptResponse] = await this.kmsClient.decrypt({
+        name: keyName,
+        ciphertext: Buffer.from(ciphertext, 'base64'),
+      });
+
+      // Return the decrypted plaintext
+      return decryptResponse.plaintext.toString('utf-8');
+    } catch (error) {
+      console.error(`Error in decryptCiphertext for keyId ${keyId}: ${error.message}`);
+      throw new Error(`Error during decryption of ciphertext: ${error.message}`);
+    }
+  }  
 }
 
 // ES6 default export
