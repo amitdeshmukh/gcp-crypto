@@ -75,3 +75,15 @@ You can decrypt all keys in the Secret Manager at once. Here's an example of usi
 let result = await gcpCrypto.decryptAllKeys();
 console.log('All keys:', result);
 ```
+
+
+Encrypt plaintext and decrypt ciphertext
+```js
+// Encrypt plaintext using GCP KMS
+const ciphertext = await gcpCrypto.encryptPlaintext(keyId, 'Your plaintext here');
+console.log('Encrypted ciphertext:', ciphertext);
+
+// Decrypt ciphertext using GCP KMS
+const plaintext = await gcpCrypto.decryptCiphertext(keyId, ciphertext);
+console.log('Decrypted plaintext:', plaintext);
+```
