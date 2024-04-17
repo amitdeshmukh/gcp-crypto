@@ -43,6 +43,21 @@ class GCPCrypto {
   }
 
   /**
+   * Deletes a secret from the Google Secret Manager.
+   *
+   * @param {string} keyId - The ID of the secret to delete.
+   * @throws {Error} Will throw an error if the deletion fails.
+   */
+  async deleteKeyFromSecretManager(keyId) {
+    try {
+      await this.secretmanagerClient.deleteSecret({
+        name: `projects/${this.projectId}/secrets/${keyId}`,
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+  /**
    * Create a random AES-256 encryption key
    * Encrypt the key using Cloud KMS
    * Store the encrypted key in Google Secret Manager
